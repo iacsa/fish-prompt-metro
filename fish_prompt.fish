@@ -44,8 +44,11 @@ function fish_prompt
         else if git_is_dirty
             set git_color white red
 
-        else if git ls-files --others --exclude-standard (git rev-parse --show-toplevel) >/dev/null
+        else
+          set -l untracked_files (git ls-files --others --exclude-standard (git rev-parse --show-toplevel))
+          if [ "$untracked_files" != "" ]
             set git_color white blue
+          end
         end
 
         if git_is_detached_head
