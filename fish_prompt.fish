@@ -44,8 +44,6 @@ function fish_prompt
         else if git_is_dirty
             set git_color white red
 
-        else if git_is_touched
-            set git_color white red
         else if git ls-files --others --exclude-standard (git rev-parse --show-toplevel) >/dev/null
             set git_color white blue
         end
