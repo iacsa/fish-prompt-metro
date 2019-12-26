@@ -46,6 +46,8 @@ function fish_prompt
 
         else if git_is_touched
             set git_color white red
+        else if git ls-files --others --exclude-standard (git rev-parse --show-toplevel) >/dev/null
+            set git_color white blue
         end
 
         if git_is_detached_head
@@ -93,14 +95,6 @@ function fish_prompt
 
     else if last_job_id > /dev/null
         segment white 333 " %% "
-    end
-
-    if [ "$theme_display_virtualenv" != 'no' ]; and set -q VIRTUAL_ENV
-        segment yellow blue " "(basename "$VIRTUAL_ENV")" "
-    end
-
-    if [ "$theme_display_ruby" != 'no' ]; and set -q RUBY_VERSION
-        segment red fff " "(basename "$RUBY_VERSION")" "
     end
 
     if test "$fish_key_bindings" = "fish_vi_key_bindings"
