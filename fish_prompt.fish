@@ -1,3 +1,51 @@
+# Helper Functions #
+function __git_branch_name -d "Get the name of the current Git branch, tag or sha1"
+    set -l branch_name (command git symbolic-ref --short HEAD 2>/dev/null)
+
+    if test -z "$branch_name"
+        set -l tag_name (command git describe --tags --exact-match HEAD 2>/dev/null)
+
+        if test -z "$tag_name"
+            command git rev-parse --short HEAD 2>/dev/null
+        else
+            printf "%s\n" "$tag_name"
+        end
+    else
+        printf "%s\n" "$branch_name"
+    end
+end
+
+function __git_is_staged -d "Test if there are changes staged for commit"
+    not git diff --cached --no-ext-diff --quiet --exit-code 2>/dev/null
+end
+
+function __git_is_dirty -d "Test if there are changes not staged for commit"
+    not git diff --no-ext-diff --quiet --exit-code 2>/dev/null
+end
+
+function __git_untracked_files -d "Get the number of untracked files in a repository"
+    set -l untracked_files (git ls-files --others --exclude-standard (git rev-parse --show-toplevel))
+end
+
+function __git_is_detached_head -d "Test if the repository is in a detached HEAD state"
+    not command git symbolic-ref HEAD 2>/dev/null >/dev/null
+end
+
+function __git_is_stashed -d "Test if there are changes in the Git stash"
+    command git rev-parse --verify --quiet refs/stash >/dev/null 2>/dev/null
+end
+
+function __git_ahead -a ahead behind diverged none
+    command git rev-list --count --left-right "@{upstream}...HEAD" 2>/dev/null | command awk "
+        /^0\t0/         { print \"$none\"       ? \"$none\"     : \"\";     exit 0 }
+        /^[0-9]+\t0/    { print \"$behind\"     ? \"$behind\"   : \"-\";    exit 0 }
+        /^0\t[0-9]+/    { print \"$ahead\"      ? \"$ahead\"    : \"+\";    exit 0 }
+        //              { print \"$diverged\"   ? \"$diverged\" : \"±\";    exit 0 }
+    "
+end
+
+
+# Main Function #
 function fish_prompt
     set -l status_copy $status
     set -l pwd_info (pwd_info "/")
@@ -30,36 +78,33 @@ function fish_prompt
         segment $base_color " $pwd_info[3] "
     end
 
-    if set branch_name (git_branch_name)
+    if set branch_name (__git_branch_name)
         set -l git_color black green
         set -l git_glyph ""
 
-        if git_is_staged
+        if __git_is_staged
             set git_color black yellow
 
-            if git_is_dirty
+            if __git_is_dirty
                 set git_color $git_color white red
             end
 
-        else if git_is_dirty
+        else if __git_is_dirty
             set git_color white red
 
-        else
-          set -l untracked_files (git ls-files --others --exclude-standard (git rev-parse --show-toplevel))
-          if [ "$untracked_files" != "" ]
+        else if __git_untracked_files
             set git_color white blue
-          end
         end
 
-        if git_is_detached_head
+        if __git_is_detached_head
             set git_glyph "➤"
 
-        else if git_is_stashed
+        else if __git_is_stashed
             set git_glyph "╍╍"
         end
 
         set -l prompt
-        set -l git_ahead (git_ahead "+ " "- " "+- ")
+        set -l git_ahead (__git_ahead "+ " "- " "+- ")
 
         if test "$branch_name" = master
             set prompt " $git_glyph $git_ahead"
