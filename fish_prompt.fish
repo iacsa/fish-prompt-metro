@@ -25,6 +25,7 @@ end
 
 function __git_untracked_files -d "Get the number of untracked files in a repository"
     set -l untracked_files (git ls-files --others --exclude-standard (git rev-parse --show-toplevel))
+    [ "$untracked_files" != "" ]
 end
 
 function __git_is_detached_head -d "Test if the repository is in a detached HEAD state"
@@ -38,9 +39,9 @@ end
 function __git_ahead -a ahead behind diverged none
     command git rev-list --count --left-right "@{upstream}...HEAD" 2>/dev/null | command awk "
         /^0\t0/         { print \"$none\"       ? \"$none\"     : \"\";     exit 0 }
-        /^[0-9]+\t0/    { print \"$behind\"     ? \"$behind\"   : \"-\";    exit 0 }
-        /^0\t[0-9]+/    { print \"$ahead\"      ? \"$ahead\"    : \"+\";    exit 0 }
-        //              { print \"$diverged\"   ? \"$diverged\" : \"±\";    exit 0 }
+        /^[0-9]+\t0/    { print \"$behind\"     ? \"$behind\"   : \"- \";    exit 0 }
+        /^0\t[0-9]+/    { print \"$ahead\"      ? \"$ahead\"    : \"+ \";    exit 0 }
+        //              { print \"$diverged\"   ? \"$diverged\" : \"± \";    exit 0 }
     "
 end
 
@@ -79,21 +80,21 @@ function fish_prompt
     end
 
     if set branch_name (__git_branch_name)
-        set -l git_color black green
+        set -l git_color
         set -l git_glyph ""
 
         if __git_is_staged
-            set git_color black yellow
+            set git_color $git_color black yellow
 
             if __git_is_dirty
                 set git_color $git_color white red
             end
 
         else if __git_is_dirty
-            set git_color white red
+            set git_color $git_color white red
 
         else if __git_untracked_files
-            set git_color white blue
+            set git_color $git_color white blue
         end
 
         if __git_is_detached_head
@@ -103,8 +104,13 @@ function fish_prompt
             set git_glyph "╍╍"
         end
 
+        # If there is no special status, show a default cursor
+        if not set -q git_color[1]
+            set git_color black green
+        end
+
         set -l prompt
-        set -l git_ahead (__git_ahead "+ " "- " "+- ")
+        set -l git_ahead (__git_ahead)
 
         if test "$branch_name" = master
             set prompt " $git_glyph $git_ahead"
